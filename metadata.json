@@ -1,0 +1,6 @@
+{
+  "name": "Unisex Salon",
+  "description": "Premier luxury Unisex Salon booking and management platform with secure user authentication, 12-hour AM/PM dynamic scheduling, real-time facilities control, and administrative controls.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
