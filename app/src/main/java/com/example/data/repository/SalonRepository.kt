@@ -33,7 +33,14 @@ class SalonRepository(
 
     // Config
     val salonConfig: Flow<SalonConfigEntity?> = dao.getSalonConfig()
-    suspend fun updateSalonConfig(config: SalonConfigEntity) = dao.insertOrUpdateConfig(config)
+    suspend fun updateSalonConfig(config: SalonConfigEntity) {
+        dao.insertOrUpdateConfig(config)
+        firebaseBackend?.syncSalonConfigToCloud(config)
+    }
+
+    fun startRealtimeCloudSync(scope: kotlinx.coroutines.CoroutineScope) {
+        firebaseBackend?.startRealtimeCloudSync(dao, scope)
+    }
     suspend fun ensureSalonConfig(): SalonConfigEntity {
         val existing = dao.getSalonConfigSync()
         if (existing != null) return existing
@@ -133,11 +140,22 @@ class SalonRepository(
 
     // Working Hours & Breaks & Holidays
     val workingDays: Flow<List<SalonWorkingDayEntity>> = dao.getAllWorkingDays()
-    suspend fun updateWorkingDay(day: SalonWorkingDayEntity) = dao.updateWorkingDay(day)
+    suspend fun updateWorkingDay(day: SalonWorkingDayEntity) {
+        dao.updateWorkingDay(day)
+        firebaseBackend?.syncWorkingDayToCloud(day)
+    }
 
     val breaks: Flow<List<SalonBreakEntity>> = dao.getAllBreaks()
-    suspend fun addBreak(salonBreak: SalonBreakEntity) = dao.insertBreak(salonBreak)
-    suspend fun deleteBreak(id: Long) = dao.deleteBreak(id)
+    suspend fun addBreak(salonBreak: SalonBreakEntity): Long {
+        val id = dao.insertBreak(salonBreak)
+        val entity = if (salonBreak.id <= 0L) salonBreak.copy(id = id) else salonBreak
+        firebaseBackend?.syncBreakToCloud(entity)
+        return id
+    }
+    suspend fun deleteBreak(id: Long) {
+        dao.deleteBreak(id)
+        firebaseBackend?.deleteBreakFromCloud(id)
+    }
 
     val holidays: Flow<List<SalonHolidayEntity>> = dao.getAllHolidays()
     suspend fun addHoliday(holiday: SalonHolidayEntity) = dao.insertHoliday(holiday)
@@ -146,16 +164,38 @@ class SalonRepository(
     // Services
     val allServices: Flow<List<ServiceEntity>> = dao.getAllServices()
     val activeServices: Flow<List<ServiceEntity>> = dao.getActiveServices()
-    suspend fun addService(service: ServiceEntity) = dao.insertService(service)
-    suspend fun updateService(service: ServiceEntity) = dao.updateService(service)
-    suspend fun deleteService(service: ServiceEntity) = dao.deleteService(service)
+    suspend fun addService(service: ServiceEntity): Long {
+        val id = dao.insertService(service)
+        val entity = if (service.id <= 0L) service.copy(id = id) else service
+        firebaseBackend?.syncServiceToCloud(entity)
+        return id
+    }
+    suspend fun updateService(service: ServiceEntity) {
+        dao.updateService(service)
+        firebaseBackend?.syncServiceToCloud(service)
+    }
+    suspend fun deleteService(service: ServiceEntity) {
+        dao.deleteService(service)
+        firebaseBackend?.deleteServiceFromCloud(service.id)
+    }
 
     // Staff
     val allStaff: Flow<List<StaffEntity>> = dao.getAllStaff()
     val activeStaff: Flow<List<StaffEntity>> = dao.getActiveStaff()
-    suspend fun addStaff(staff: StaffEntity) = dao.insertStaff(staff)
-    suspend fun updateStaff(staff: StaffEntity) = dao.updateStaff(staff)
-    suspend fun deleteStaff(staff: StaffEntity) = dao.deleteStaff(staff)
+    suspend fun addStaff(staff: StaffEntity): Long {
+        val id = dao.insertStaff(staff)
+        val entity = if (staff.id <= 0L) staff.copy(id = id) else staff
+        firebaseBackend?.syncStaffToCloud(entity)
+        return id
+    }
+    suspend fun updateStaff(staff: StaffEntity) {
+        dao.updateStaff(staff)
+        firebaseBackend?.syncStaffToCloud(staff)
+    }
+    suspend fun deleteStaff(staff: StaffEntity) {
+        dao.deleteStaff(staff)
+        firebaseBackend?.deleteStaffFromCloud(staff.id)
+    }
 
     // Users & Authentication
     val allUsers: Flow<List<UserEntity>> = dao.getAllUsers()
@@ -750,6 +790,7 @@ class SalonRepository(
             updatedAt = System.currentTimeMillis()
         )
         dao.updateBooking(updated)
+        firebaseBackend?.syncBookingToCloud(updated)
 
         dao.insertNotification(
             NotificationEntity(
@@ -768,7 +809,8 @@ class SalonRepository(
                 context = ctx,
                 booking = updated,
                 salonConfig = config,
-                isPostponed = false
+                isPostponed = false,
+                firebaseBackend = firebaseBackend
             )
             AppFeedbackHelper.triggerSuccess(ctx)
         }
@@ -785,6 +827,7 @@ class SalonRepository(
             updatedAt = System.currentTimeMillis()
         )
         dao.updateBooking(updated)
+        firebaseBackend?.syncBookingToCloud(updated)
 
         dao.insertNotification(
             NotificationEntity(
@@ -804,7 +847,8 @@ class SalonRepository(
                 booking = updated,
                 salonConfig = config,
                 isPostponed = false,
-                postponeReason = "Declined: $reason"
+                postponeReason = "Declined: $reason",
+                firebaseBackend = firebaseBackend
             )
             AppFeedbackHelper.triggerError(ctx)
         }
@@ -846,6 +890,7 @@ class SalonRepository(
             updatedAt = System.currentTimeMillis()
         )
         dao.updateBooking(updated)
+        firebaseBackend?.syncBookingToCloud(updated)
 
         dao.insertNotification(
             NotificationEntity(
@@ -865,7 +910,8 @@ class SalonRepository(
                 context = ctx,
                 booking = updated,
                 salonConfig = config,
-                isPostponed = false
+                isPostponed = false,
+                firebaseBackend = firebaseBackend
             )
             AppFeedbackHelper.triggerSuccess(ctx)
         }
@@ -913,6 +959,7 @@ class SalonRepository(
             updatedAt = System.currentTimeMillis()
         )
         dao.updateBooking(updated)
+        firebaseBackend?.syncBookingToCloud(updated)
 
         dao.insertNotification(
             NotificationEntity(
@@ -933,7 +980,8 @@ class SalonRepository(
                 booking = updated,
                 salonConfig = config,
                 isPostponed = true,
-                postponeReason = reason
+                postponeReason = reason,
+                firebaseBackend = firebaseBackend
             )
             AppFeedbackHelper.triggerNotification(ctx)
         }
@@ -1023,6 +1071,7 @@ class SalonRepository(
             updatedAt = System.currentTimeMillis()
         )
         dao.updateBooking(updated)
+        firebaseBackend?.syncBookingToCloud(updated)
 
         if (newStatus == BookingStatus.IN_PROGRESS) {
             dao.insertNotification(
@@ -1062,6 +1111,7 @@ class SalonRepository(
             updatedAt = System.currentTimeMillis()
         )
         dao.updateBooking(updated)
+        firebaseBackend?.syncBookingToCloud(updated)
 
         // Customer receipt notification
         dao.insertNotification(
@@ -1099,6 +1149,7 @@ class SalonRepository(
             updatedAt = System.currentTimeMillis()
         )
         dao.updateBooking(updated)
+        firebaseBackend?.syncBookingToCloud(updated)
 
         dao.insertNotification(
             NotificationEntity(

@@ -132,6 +132,8 @@ class SalonViewModel(private val repository: SalonRepository) : ViewModel() {
             repository.ensureSalonConfig()
             repository.ensureInitialAmenities()
             repository.ensureWorkingDays()
+            // Start bidirectional real-time cloud sync across all devices
+            repository.startRealtimeCloudSync(viewModelScope)
             // Check if this device is remembered as Admin mobile
             if (repository.isAdminDeviceRemembered()) {
                 _isAdminAuthenticated.value = true
@@ -549,11 +551,13 @@ class SalonViewModel(private val repository: SalonRepository) : ViewModel() {
             recipientEmail = trimmedEmail,
             recipientPhone = trimmedPhone,
             otpCode = otp,
-            purpose = "Account Verification"
+            purpose = "Account Verification",
+            firebaseBackend = repository.firebaseBackend,
+            scope = viewModelScope
         )
         AppFeedbackHelper.triggerNotification(context)
 
-        _uiMessage.value = "Verification OTP code sent to $trimmedEmail & $trimmedPhone!"
+        _uiMessage.value = "Verification code dispatched to your Gmail: $trimmedEmail"
         onSuccess()
     }
 
@@ -565,7 +569,7 @@ class SalonViewModel(private val repository: SalonRepository) : ViewModel() {
     ) {
         if (enteredOtp.trim() != _activeOtpCode.value) {
             AppFeedbackHelper.triggerError(context)
-            onError("Invalid OTP code. Please check your notification alerts.")
+            onError("Invalid verification code. Please check your Gmail inbox.")
             return
         }
 
@@ -626,11 +630,13 @@ class SalonViewModel(private val repository: SalonRepository) : ViewModel() {
             recipientEmail = clean,
             recipientPhone = clean,
             otpCode = otp,
-            purpose = "Password Reset"
+            purpose = "Password Reset",
+            firebaseBackend = repository.firebaseBackend,
+            scope = viewModelScope
         )
         AppFeedbackHelper.triggerNotification(context)
 
-        _uiMessage.value = "Reset code sent to $clean!"
+        _uiMessage.value = "Password reset code dispatched to your Gmail: $clean"
         onSuccess()
     }
 
@@ -643,7 +649,7 @@ class SalonViewModel(private val repository: SalonRepository) : ViewModel() {
     ) {
         if (enteredOtp.trim() != _activeOtpCode.value) {
             AppFeedbackHelper.triggerError(context)
-            onError("Invalid OTP code. Please check your notification alerts.")
+            onError("Invalid verification code. Please check your Gmail inbox.")
             return
         }
         if (newPasswordRaw.length < 6) {
@@ -683,10 +689,12 @@ class SalonViewModel(private val repository: SalonRepository) : ViewModel() {
             recipientEmail = _otpTargetGmail.value,
             recipientPhone = _otpTargetPhone.value,
             otpCode = otp,
-            purpose = if (_isResetPasswordFlow.value) "Password Reset" else "Account Verification"
+            purpose = if (_isResetPasswordFlow.value) "Password Reset" else "Account Verification",
+            firebaseBackend = repository.firebaseBackend,
+            scope = viewModelScope
         )
         AppFeedbackHelper.triggerNotification(context)
-        _uiMessage.value = "New OTP code sent!"
+        _uiMessage.value = "New verification code sent to your Gmail!"
     }
 
     fun registerCustomer(

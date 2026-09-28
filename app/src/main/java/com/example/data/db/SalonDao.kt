@@ -78,6 +78,9 @@ interface SalonDao {
     @Query("SELECT * FROM services ORDER BY category ASC, name ASC")
     fun getAllServices(): Flow<List<ServiceEntity>>
 
+    @Query("SELECT * FROM services ORDER BY category ASC, name ASC")
+    suspend fun getAllServicesSync(): List<ServiceEntity>
+
     @Query("SELECT * FROM services WHERE isActive = 1 ORDER BY category ASC, name ASC")
     fun getActiveServices(): Flow<List<ServiceEntity>>
 
@@ -96,6 +99,9 @@ interface SalonDao {
     @Delete
     suspend fun deleteService(service: ServiceEntity)
 
+    @Query("DELETE FROM services WHERE id = :id")
+    suspend fun deleteServiceById(id: Long)
+
     // Staff
     @Query("SELECT * FROM staff ORDER BY name ASC")
     fun getAllStaff(): Flow<List<StaffEntity>>
@@ -105,6 +111,9 @@ interface SalonDao {
 
     @Query("SELECT * FROM staff WHERE isActive = 1 ORDER BY name ASC")
     suspend fun getActiveStaffSync(): List<StaffEntity>
+
+    @Query("SELECT * FROM staff ORDER BY name ASC")
+    suspend fun getAllStaffSync(): List<StaffEntity>
 
     @Query("SELECT * FROM staff WHERE id = :id LIMIT 1")
     suspend fun getStaffById(id: Long): StaffEntity?
@@ -120,6 +129,9 @@ interface SalonDao {
 
     @Delete
     suspend fun deleteStaff(staff: StaffEntity)
+
+    @Query("DELETE FROM staff WHERE id = :id")
+    suspend fun deleteStaffById(id: Long)
 
     // Users
     @Query("SELECT * FROM users ORDER BY name ASC")
@@ -179,6 +191,9 @@ interface SalonDao {
 
     @Update
     suspend fun updateBooking(booking: BookingEntity)
+
+    @Query("DELETE FROM bookings WHERE id = :id")
+    suspend fun deleteBookingById(id: Long)
 
     // Support Messages
     @Query("SELECT * FROM support_messages WHERE ticketCustomerId = :customerId ORDER BY timestamp ASC")
