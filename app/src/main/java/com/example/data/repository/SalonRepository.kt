@@ -518,7 +518,7 @@ class SalonRepository(
         val salonOpenMin = timeToMinutes(workingDay.openTime)
         val salonCloseMin = timeToMinutes(workingDay.closeTime)
 
-        val allStaff = dao.getAllActiveStaffSync()
+        val allStaff = dao.getActiveStaffSync()
         val targetStaffList = if (staffId != null && staffId > 0) {
             allStaff.filter { it.id == staffId }
         } else {
@@ -641,7 +641,7 @@ class SalonRepository(
 
         // 4. Validate Breaks & Staff Availability
         var finalStaff = staff
-        val allActiveStaff = dao.getAllActiveStaffSync()
+        val allActiveStaff = dao.getActiveStaffSync()
         val allBreaks = dao.getAllBreaksSync()
         val dateBookings = dao.getActiveBookingsForDateSync(bookingDate)
 

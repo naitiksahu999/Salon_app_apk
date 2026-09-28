@@ -1606,7 +1606,7 @@ fun CustomerProfileScreen(viewModel: SalonViewModel) {
     val currentUser by viewModel.currentUser.collectAsState()
     val isUserLoggedIn by viewModel.isUserLoggedIn.collectAsState()
     val bookings by viewModel.customerBookings.collectAsState()
-    val allServices by viewModel.services.collectAsState()
+    val allServices by viewModel.activeServices.collectAsState()
     val listState = rememberLazyListState()
 
     var name by remember(currentUser) { mutableStateOf(currentUser.name) }
@@ -1677,7 +1677,7 @@ fun CustomerProfileScreen(viewModel: SalonViewModel) {
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Personal details & preferred services synced to Google Firebase Firestore",
+                    text = "Manage your appointments, preferred treatments & personal details",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1848,12 +1848,26 @@ fun CustomerProfileScreen(viewModel: SalonViewModel) {
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.SemiBold
                         )
+                        if (isUserLoggedIn) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedButton(
+                                onClick = {
+                                    AppFeedbackHelper.triggerClick(context)
+                                    viewModel.logoutCustomer()
+                                    Toast.makeText(context, "Logged out successfully", Toast.LENGTH_SHORT).show()
+                                },
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 4.dp),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Text("Log Out", style = MaterialTheme.typography.labelMedium)
+                            }
+                        }
                     }
                 }
             }
         }
 
-        // PREFERRED SERVICES CARD (FIRESTORE SYNC)
+        // PREFERRED SERVICES CARD
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -1881,7 +1895,7 @@ fun CustomerProfileScreen(viewModel: SalonViewModel) {
                     }
 
                     Text(
-                        text = "Select your favorite treatments & services. These preferences are permanently synced to your Firebase Firestore profile to give you personalized scheduling:",
+                        text = "Select your favorite treatments & services to personalize your appointment bookings:",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1891,7 +1905,7 @@ fun CustomerProfileScreen(viewModel: SalonViewModel) {
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        allServices.forEach { srv ->
+                        for (srv in allServices) {
                             val isSelected = selectedPreferredServices.contains(srv.name)
                             FilterChip(
                                 selected = isSelected,
@@ -1982,7 +1996,7 @@ fun CustomerProfileScreen(viewModel: SalonViewModel) {
                         label = { Text("Mobile Phone (10 Digits)") },
                         placeholder = { Text("e.g. 9876543210") },
                         leadingIcon = {
-                            Icon(imageVector = Icons.Default.Phone, contentDescription = null)
+                            Icon(imageVector = Icons.Default.Call, contentDescription = null)
                         },
                         isError = isPhoneInvalid,
                         supportingText = {
@@ -2037,7 +2051,7 @@ fun CustomerProfileScreen(viewModel: SalonViewModel) {
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            listOf("Female", "Male", "Other", "Prefer Not").forEach { g ->
+                            for (g in listOf("Female", "Male", "Other", "Prefer Not")) {
                                 val isSelected = gender.equals(g, ignoreCase = true)
                                 FilterChip(
                                     selected = isSelected,
@@ -2108,7 +2122,7 @@ fun CustomerProfileScreen(viewModel: SalonViewModel) {
                                 birthday = birthday,
                                 notes = personalNotes
                             )
-                            Toast.makeText(context, "Profile & preferred services synced to Firestore!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Profile updated successfully!", Toast.LENGTH_SHORT).show()
                         },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -2116,73 +2130,12 @@ fun CustomerProfileScreen(viewModel: SalonViewModel) {
                             .testTag("save_profile_button"),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Icon(imageVector = Icons.Default.CloudDone, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Save Profile & Sync to Firestore",
+                            text = "Save Profile",
                             fontWeight = FontWeight.Bold
                         )
-                    }
-                }
-            }
-        }
-
-        // Firebase Cloud Backend Synchronization Card
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Shield,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Text(
-                            text = "Backend & Database Status",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    Text(
-                        text = "• Local Database: SQLite Room Database (Active)\n• Cloud Synchronization: Firebase Firestore & Authentication\n• Security: SHA-256 Hashing & Safe Multi-Layer Credentials",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Button(
-                            onClick = {
-                                AppFeedbackHelper.playSuccessSoundWithMediaPlayer(context)
-                                viewModel.triggerFirebaseCloudSync()
-                            },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Text("Sync With Firebase")
-                        }
-
-                        if (isUserLoggedIn) {
-                            OutlinedButton(
-                                onClick = { viewModel.logoutCustomer() },
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Text("Log Out")
-                            }
-                        }
                     }
                 }
             }

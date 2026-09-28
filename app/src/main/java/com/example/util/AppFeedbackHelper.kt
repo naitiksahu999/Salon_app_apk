@@ -55,14 +55,19 @@ object AppFeedbackHelper {
      */
     fun playSuccessSoundWithMediaPlayer(context: Context) {
         try {
-            val mediaPlayer = MediaPlayer.create(context.applicationContext, R.raw.calm_success)
+            val audioAttributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build()
+
+            val mediaPlayer = MediaPlayer.create(
+                context.applicationContext,
+                R.raw.calm_success,
+                audioAttributes,
+                0
+            ) ?: MediaPlayer.create(context.applicationContext, R.raw.calm_success)
+
             if (mediaPlayer != null) {
-                mediaPlayer.setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                        .build()
-                )
                 mediaPlayer.setVolume(0.70f, 0.70f)
                 mediaPlayer.setOnCompletionListener { mp ->
                     try {

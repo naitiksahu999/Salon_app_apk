@@ -1,9 +1,14 @@
 package com.example.ui.auth
 
+import android.accounts.AccountManager
+import android.os.Build
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -78,6 +83,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -87,6 +93,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.example.R
 import com.example.util.AppFeedbackHelper
 import com.example.viewmodel.SalonViewModel
 import kotlinx.coroutines.delay
@@ -112,61 +119,15 @@ fun isValidMobileNumber(phone: String): Boolean {
 }
 
 /**
- * Pixel-accurate Google Multi-Color Brand Icon
+ * Official Google Multi-Color Brand Icon
  */
 @Composable
 fun GoogleBrandLogo(modifier: Modifier = Modifier.size(20.dp)) {
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-        val cx = w / 2f
-        val cy = h / 2f
-        val radius = (w / 2f) * 0.85f
-        val strokeWidth = w * 0.22f
-
-        // Blue right segment
-        drawArc(
-            color = Color(0xFF4285F4),
-            startAngle = -45f,
-            sweepAngle = 90f,
-            useCenter = false,
-            style = Stroke(width = strokeWidth)
-        )
-        // Green bottom segment
-        drawArc(
-            color = Color(0xFF34A853),
-            startAngle = 45f,
-            sweepAngle = 90f,
-            useCenter = false,
-            style = Stroke(width = strokeWidth)
-        )
-        // Yellow bottom-left segment
-        drawArc(
-            color = Color(0xFFFBBC05),
-            startAngle = 135f,
-            sweepAngle = 90f,
-            useCenter = false,
-            style = Stroke(width = strokeWidth)
-        )
-        // Red top segment
-        drawArc(
-            color = Color(0xFFEA4335),
-            startAngle = 225f,
-            sweepAngle = 90f,
-            useCenter = false,
-            style = Stroke(width = strokeWidth)
-        )
-        // Center horizontal bar for 'G'
-        val barPath = Path().apply {
-            moveTo(cx, cy)
-            lineTo(cx + radius + strokeWidth * 0.1f, cy)
-        }
-        drawPath(
-            path = barPath,
-            color = Color(0xFF4285F4),
-            style = Stroke(width = strokeWidth)
-        )
-    }
+    Image(
+        painter = painterResource(id = R.drawable.ic_google_logo),
+        contentDescription = "Google",
+        modifier = modifier
+    )
 }
 
 /**
@@ -925,9 +886,14 @@ fun AuthModalSheet(
                     Button(
                         onClick = {
                             loginSubmitted = true
-                            if (isLoginEmail && !isValidEmailAddress(loginIdentifier)) {
+                            if (isLoginEmailInvalid) {
                                 AppFeedbackHelper.triggerError(context)
                                 Toast.makeText(context, "Please enter a valid email format (e.g. name@gmail.com)", Toast.LENGTH_LONG).show()
+                                return@Button
+                            }
+                            if (isLoginPhoneInvalid) {
+                                AppFeedbackHelper.triggerError(context)
+                                Toast.makeText(context, "Please enter a valid 10-digit mobile number", Toast.LENGTH_LONG).show()
                                 return@Button
                             }
                             viewModel.loginCustomer(loginIdentifier, loginPassword) {
@@ -1165,7 +1131,7 @@ fun AuthModalSheet(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Google Firebase Backend + SQLite Room DB with SHA-256 password hash encryption.",
+                            text = "Your account and personal details are protected with secure encryption.",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -1239,9 +1205,48 @@ fun GoogleAccountChooserDialog(
     onDismiss: () -> Unit,
     onAccountChosen: (name: String, email: String) -> Unit
 ) {
+    val context = LocalContext.current
     var customGoogleName by remember { mutableStateOf("") }
     var customGoogleEmail by remember { mutableStateOf("") }
     var isAddingNewAccount by remember { mutableStateOf(false) }
+
+    // Launcher for official Android system account picker
+    val systemAccountPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val chosenEmail = result.data?.getStringExtra(AccountManager.KEY_ACCOUNT_NAME)
+        if (!chosenEmail.isNullOrBlank()) {
+            val derivedName = chosenEmail.substringBefore("@")
+                .replace(".", " ")
+                .split(" ")
+                .joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
+            onAccountChosen(derivedName, chosenEmail)
+        }
+    }
+
+    // Query device accounts from AccountManager
+    val deviceAccounts = remember(context) {
+        val list = mutableListOf<Pair<String, String>>()
+        try {
+            val am = AccountManager.get(context)
+            val accounts = am.getAccountsByType("com.google")
+            for (acc in accounts) {
+                val email = acc.name
+                val name = email.substringBefore("@")
+                    .replace(".", " ")
+                    .split(" ")
+                    .joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
+                if (list.none { it.second.equals(email, ignoreCase = true) }) {
+                    list.add(Pair(name, email))
+                }
+            }
+        } catch (_: Exception) { }
+
+        if (list.none { it.second.equals("naitiksahu054@gmail.com", ignoreCase = true) }) {
+            list.add(0, Pair("Naitik Sahu", "naitiksahu054@gmail.com"))
+        }
+        list
+    }
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
@@ -1254,11 +1259,12 @@ fun GoogleAccountChooserDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
                     .padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Header
-                GoogleBrandLogo(modifier = Modifier.size(32.dp))
+                GoogleBrandLogo(modifier = Modifier.size(34.dp))
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
@@ -1273,69 +1279,122 @@ fun GoogleAccountChooserDialog(
                     textAlign = TextAlign.Center
                 )
 
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(18.dp))
 
                 if (!isAddingNewAccount) {
-                    // Pre-detected Google Account (User's real email)
-                    val realGoogleEmail = "naitiksahu054@gmail.com"
-                    val realGoogleName = "Naitik Sahu"
-
-                    Surface(
-                        onClick = { onAccountChosen(realGoogleName, realGoogleEmail) },
-                        shape = RoundedCornerShape(14.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("google_account_card_primary")
+                    // Display all detected accounts
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(42.dp)
-                                    .clip(CircleShape)
-                                    .background(Color(0xFF00796B)),
-                                contentAlignment = Alignment.Center
+                        for (account in deviceAccounts) {
+                            val accName = account.first
+                            val accEmail = account.second
+                            val initial = accName.firstOrNull()?.uppercase() ?: accEmail.firstOrNull()?.uppercase() ?: "G"
+                            val avatarBg = when ((accEmail.hashCode() % 3 + 3) % 3) {
+                                0 -> Color(0xFF00796B)
+                                1 -> Color(0xFF1976D2)
+                                else -> Color(0xFF5E35B1)
+                            }
+
+                            Surface(
+                                onClick = { onAccountChosen(accName, accEmail) },
+                                shape = RoundedCornerShape(14.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text(
-                                    text = "N",
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 18.sp
-                                )
-                            }
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(CircleShape)
+                                            .background(avatarBg),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = initial,
+                                            color = Color.White,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 17.sp
+                                        )
+                                    }
 
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = realGoogleName,
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    text = realGoogleEmail,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = accName,
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = accEmail,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
 
-                            Icon(
-                                imageVector = Icons.Default.CheckCircle,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
-                            )
+                                    Icon(
+                                        imageVector = Icons.Default.CheckCircle,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
                         }
                     }
 
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    // Option to use another Google account
+                    // Launch native system account picker if multiple accounts configured on phone
+                    Surface(
+                        onClick = {
+                            try {
+                                val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                                    AccountManager.newChooseAccountIntent(
+                                        null, null, arrayOf("com.google"), null, null, null, null
+                                    )
+                                } else {
+                                    @Suppress("DEPRECATION")
+                                    AccountManager.newChooseAccountIntent(
+                                        null, null, arrayOf("com.google"), false, null, null, null, null
+                                    )
+                                }
+                                systemAccountPickerLauncher.launch(intent)
+                            } catch (_: Exception) {
+                                isAddingNewAccount = true
+                            }
+                        },
+                        shape = RoundedCornerShape(14.dp),
+                        color = MaterialTheme.colorScheme.surface,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            GoogleBrandLogo(modifier = Modifier.size(20.dp))
+                            Text(
+                                text = "Select from All Device Google Accounts",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Option to enter another Google account
                     Surface(
                         onClick = { isAddingNewAccount = true },
                         shape = RoundedCornerShape(14.dp),
@@ -1356,7 +1415,7 @@ fun GoogleAccountChooserDialog(
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                text = "Use another Google Account",
+                                text = "Add or enter another Google Account",
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -1367,7 +1426,7 @@ fun GoogleAccountChooserDialog(
                     OutlinedTextField(
                         value = customGoogleName,
                         onValueChange = { customGoogleName = it },
-                        label = { Text("Google Display Name") },
+                        label = { Text("Display Name") },
                         placeholder = { Text("e.g. Naitik Sahu") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
@@ -1380,7 +1439,7 @@ fun GoogleAccountChooserDialog(
                         value = customGoogleEmail,
                         onValueChange = { customGoogleEmail = it },
                         label = { Text("Google Account (@gmail.com)") },
-                        placeholder = { Text("e.g. naitiksahu054@gmail.com") },
+                        placeholder = { Text("e.g. yourname@gmail.com") },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                         modifier = Modifier.fillMaxWidth(),
@@ -1419,7 +1478,7 @@ fun GoogleAccountChooserDialog(
                 Spacer(modifier = Modifier.height(18.dp))
 
                 Text(
-                    text = "To continue, Google will share your verified name, email address, and profile photo with Unisex Salon in accordance with our Privacy Policy.",
+                    text = "To continue, Google will share your name and email address with Unisex Salon to manage your appointments.",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,

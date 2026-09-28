@@ -12,13 +12,16 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.CalendarToday
@@ -79,12 +82,13 @@ fun DayTimingsEditorDialog(
 
     Dialog(
         onDismissRequest = onDismissRequest,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color(0xD9000000))
+                .imePadding()
                 .padding(16.dp),
             contentAlignment = Alignment.Center
         ) {
@@ -99,6 +103,7 @@ fun DayTimingsEditorDialog(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
                         .padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {

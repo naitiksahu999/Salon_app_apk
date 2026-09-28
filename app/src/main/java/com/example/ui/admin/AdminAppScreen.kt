@@ -19,16 +19,24 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.material.icons.filled.Crop
 import androidx.compose.material.icons.filled.PhoneAndroid
 import com.example.ui.components.RealMapPickerDialog
@@ -3499,82 +3507,284 @@ fun AdminSalonOpsScreen(viewModel: SalonViewModel) {
         var sPrice by remember(current) { mutableStateOf((current?.price ?: 95.0).toString()) }
         var sImageUrl by remember(current) { mutableStateOf(current?.imageUrl ?: "") }
 
-        AlertDialog(
+        val photoPickerLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.PickVisualMedia()
+        ) { uri: Uri? ->
+            if (uri != null) {
+                sImageUrl = uri.toString()
+            }
+        }
+
+        Dialog(
             onDismissRequest = {
                 isCreatingService = false
                 serviceDialogItem = null
             },
-            title = { Text(if (current != null) "Edit Service" else "New Salon Service") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Quick Presets / Suggestions:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        items(listOf(
-                            Triple("Classic Cut", "Hair Cut", "https://images.unsplash.com/photo-1599351431202-1e0f0137899a?auto=format&fit=crop&w=600&q=80") to ("Signature Haircut & Styling" to ("45" to "350")),
-                            Triple("Balayage Colour", "Colour & Highlights", "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=600&q=80") to ("Balayage & Gloss" to ("120" to "2500")),
-                            Triple("Royal Beard", "Beard Grooming", "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=600&q=80") to ("Royal Beard Grooming" to ("30" to "400")),
-                            Triple("Hydra Facial", "Facial", "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=600&q=80") to ("Hydra-Luxe Facial" to ("60" to "1200")),
-                            Triple("Glam Makeup", "Makeup", "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=600&q=80") to ("Signature Occasion Makeup" to ("90" to "3500"))
-                        )) { (meta, details) ->
-                            FilterChip(
-                                selected = sName == details.first,
+            properties = DialogProperties(
+                usePlatformDefaultWidth = false,
+                decorFitsSystemWindows = false
+            )
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.75f))
+                    .imePadding()
+                    .padding(horizontal = 16.dp, vertical = 20.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = 520.dp)
+                        .heightIn(max = 700.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState())
+                            .padding(20.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // Title bar
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = if (current != null) "Edit Service" else "New Salon Service",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            IconButton(
                                 onClick = {
-                                    sName = details.first
-                                    sCat = meta.second
-                                    sImageUrl = meta.third
-                                    sDuration = details.second.first
-                                    sPrice = details.second.second
-                                    sDesc = "High-end bespoke unisex service with premium botanical products"
-                                },
-                                label = { Text(meta.first, style = MaterialTheme.typography.labelSmall) }
+                                    isCreatingService = false
+                                    serviceDialogItem = null
+                                }
+                            ) {
+                                Icon(Icons.Default.Close, contentDescription = "Close")
+                            }
+                        }
+
+                        Text("Quick Presets / Suggestions:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            items(listOf(
+                                Triple("Classic Cut", "Hair Cut", "https://images.unsplash.com/photo-1599351431202-1e0f0137899a?auto=format&fit=crop&w=600&q=80") to ("Signature Haircut & Styling" to ("45" to "350")),
+                                Triple("Balayage Colour", "Colour & Highlights", "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=600&q=80") to ("Balayage & Gloss" to ("120" to "2500")),
+                                Triple("Royal Beard", "Beard Grooming", "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=600&q=80") to ("Royal Beard Grooming" to ("30" to "400")),
+                                Triple("Hydra Facial", "Facial", "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=600&q=80") to ("Hydra-Luxe Facial" to ("60" to "1200")),
+                                Triple("Glam Makeup", "Makeup", "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=600&q=80") to ("Signature Occasion Makeup" to ("90" to "3500"))
+                            )) { (meta, details) ->
+                                FilterChip(
+                                    selected = sName == details.first,
+                                    onClick = {
+                                        sName = details.first
+                                        sCat = meta.second
+                                        sImageUrl = meta.third
+                                        sDuration = details.second.first
+                                        sPrice = details.second.second
+                                        sDesc = "High-end bespoke unisex service with premium botanical products"
+                                    },
+                                    label = { Text(meta.first, style = MaterialTheme.typography.labelSmall) }
+                                )
+                            }
+                        }
+
+                        OutlinedTextField(
+                            value = sName,
+                            onValueChange = { sName = it },
+                            label = { Text("Service Name") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = sCat,
+                            onValueChange = { sCat = it },
+                            label = { Text("Category (Hair Cut, Colour, Facial, Beard)") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = sDesc,
+                            onValueChange = { sDesc = it },
+                            label = { Text("Description") },
+                            maxLines = 2,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        // Duration and Price in clearly readable side-by-side fields
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = sDuration,
+                                onValueChange = { sDuration = it },
+                                label = { Text("Duration (mins)") },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Number,
+                                    imeAction = ImeAction.Next
+                                ),
+                                modifier = Modifier.weight(1f)
+                            )
+                            OutlinedTextField(
+                                value = sPrice,
+                                onValueChange = { sPrice = it },
+                                label = { Text("Price (" + (salonConfig?.currencySymbol ?: "₹") + ")") },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Decimal,
+                                    imeAction = ImeAction.Done
+                                ),
+                                modifier = Modifier.weight(1f)
                             )
                         }
-                    }
 
-                    OutlinedTextField(value = sName, onValueChange = { sName = it }, label = { Text("Service Name") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = sCat, onValueChange = { sCat = it }, label = { Text("Category (Hair Cut, Colour, Facial, Beard)") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = sDesc, onValueChange = { sDesc = it }, label = { Text("Description") }, modifier = Modifier.fillMaxWidth())
+                        // Photo from Media Picker (Replaces URL system)
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                text = "Service Photo",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
 
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedTextField(value = sDuration, onValueChange = { sDuration = it }, label = { Text("Duration (mins)") }, modifier = Modifier.weight(1f))
-                        OutlinedTextField(value = sPrice, onValueChange = { sPrice = it }, label = { Text("Price (" + (salonConfig?.currencySymbol ?: "₹") + ")") }, modifier = Modifier.weight(1f))
-                    }
+                            if (sImageUrl.isNotBlank()) {
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(140.dp),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Box(modifier = Modifier.fillMaxSize()) {
+                                        AsyncImage(
+                                            model = sImageUrl,
+                                            contentDescription = "Service Image Preview",
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                        )
+                                        Row(
+                                            modifier = Modifier
+                                                .align(Alignment.BottomEnd)
+                                                .padding(8.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            Button(
+                                                onClick = {
+                                                    photoPickerLauncher.launch(
+                                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                                    )
+                                                },
+                                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                                shape = RoundedCornerShape(8.dp)
+                                            ) {
+                                                Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(16.dp))
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text("Change", style = MaterialTheme.typography.labelSmall)
+                                            }
+                                            IconButton(
+                                                onClick = { sImageUrl = "" },
+                                                modifier = Modifier
+                                                    .size(32.dp)
+                                                    .background(Color.Black.copy(alpha = 0.6f), CircleShape)
+                                            ) {
+                                                Icon(Icons.Default.Delete, contentDescription = "Remove photo", tint = Color.White, modifier = Modifier.size(18.dp))
+                                            }
+                                        }
+                                    }
+                                }
+                            } else {
+                                Surface(
+                                    onClick = {
+                                        photoPickerLauncher.launch(
+                                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                        )
+                                    },
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.PhotoLibrary,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(10.dp))
+                                        Column {
+                                            Text(
+                                                text = "Add Photo from Gallery / Device",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                            Text(
+                                                text = "Select photo directly from your media storage",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
 
-                    OutlinedTextField(value = sImageUrl, onValueChange = { sImageUrl = it }, label = { Text("Service Image URL (Optional)") }, modifier = Modifier.fillMaxWidth())
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val dur = sDuration.toIntOrNull() ?: 60
-                        val prc = sPrice.toDoubleOrNull() ?: 50.0
-                        val entity = ServiceEntity(
-                            id = current?.id ?: 0L,
-                            name = sName,
-                            category = sCat,
-                            description = sDesc,
-                            durationMinutes = dur,
-                            price = prc,
-                            isActive = true,
-                            imageUrl = sImageUrl
-                        )
-                        viewModel.saveService(entity)
-                        isCreatingService = false
-                        serviceDialogItem = null
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        // Action Buttons
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = {
+                                    isCreatingService = false
+                                    serviceDialogItem = null
+                                },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("Cancel")
+                            }
+                            Button(
+                                onClick = {
+                                    val dur = sDuration.toIntOrNull() ?: 60
+                                    val prc = sPrice.toDoubleOrNull() ?: 50.0
+                                    val entity = ServiceEntity(
+                                        id = current?.id ?: 0L,
+                                        name = sName.ifBlank { "Salon Service" },
+                                        category = sCat.ifBlank { "Hair Cut" },
+                                        description = sDesc,
+                                        durationMinutes = dur,
+                                        price = prc,
+                                        isActive = true,
+                                        imageUrl = sImageUrl
+                                    )
+                                    viewModel.saveService(entity)
+                                    isCreatingService = false
+                                    serviceDialogItem = null
+                                },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("Save Service")
+                            }
+                        }
                     }
-                ) {
-                    Text("Save Service")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    isCreatingService = false
-                    serviceDialogItem = null
-                }) {
-                    Text("Cancel")
                 }
             }
-        )
+        }
     }
 
     // DIALOG: CREATE / EDIT STAFF
@@ -3591,7 +3801,10 @@ fun AdminSalonOpsScreen(viewModel: SalonViewModel) {
             },
             title = { Text(if (current != null) "Edit Specialist" else "Add Salon Staff") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     OutlinedTextField(value = stName, onValueChange = { stName = it }, label = { Text("Full Name") }, modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(value = stTitle, onValueChange = { stTitle = it }, label = { Text("Title (e.g. Master Stylist)") }, modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(value = stSpec, onValueChange = { stSpec = it }, label = { Text("Specialty") }, modifier = Modifier.fillMaxWidth())
@@ -3637,7 +3850,10 @@ fun AdminSalonOpsScreen(viewModel: SalonViewModel) {
             onDismissRequest = { breakDialogItem = false },
             title = { Text("Add Salon Break") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     OutlinedTextField(value = bTitle, onValueChange = { bTitle = it }, label = { Text("Break Title") })
                     OutlinedTextField(value = bStart, onValueChange = { bStart = it }, label = { Text("Start Time (HH:mm)") })
                     OutlinedTextField(value = bEnd, onValueChange = { bEnd = it }, label = { Text("End Time (HH:mm)") })
